@@ -72,8 +72,8 @@ export class UsersService {
   }
 
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
+  async findOne(id: string) :Promise<User>{
+    return await this.userModel.findById(id);
   }
 
  async update(id: string, updateUserDto: UpdateUserDto) {

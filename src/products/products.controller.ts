@@ -5,13 +5,15 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { AuthGuard } from 'src/common/core/auth-guard/auth.guard';
+import { AuthGuard } from 'src/common/guards/auth.guard';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decoraters/roles.decorator';
 
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) { }
   
-   @Post('create')
+  @Post('create')
   @UseInterceptors(FileInterceptor('image',{
     storage: diskStorage({
       destination: './uploads',
@@ -40,7 +42,9 @@ export class ProductsController {
   // }
 
   @Get('all')
-  @UseGuards(AuthGuard)
+    // @UseGuards(AuthGuard)
+  @Roles('admin')
+  @UseGuards(RolesGuard)
   async findAll() {
     const products = await this.productsService.findAll();
     return products.map(product => ({

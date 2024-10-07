@@ -17,31 +17,33 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() loginDto: LoginDto) {
-    return await this.authService.login(loginDto)
+  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    return await this.authService.login(loginDto,res)
   }
-   @Post('refresh')
+  @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(@Req() req: Request, @Res({passthrough:true}) res: Response): Promise<{ token: string }> {
-    const cookies = req.cookies;
+     const cookies = req.cookies;
     
     if (!cookies?.refreshToken) {
-      throw new UnauthorizedException('Unauthorized');
+      throw new UnauthorizedException('Unauthorizedss');
     }
 
-    const refreshToken = cookies.refreshToken;
+     const refreshToken = cookies.refreshToken;
+      console.log('refressssss',refreshToken)
+    
     
     try {
-      const decoded = await this.jwtService.verify(refreshToken, { secret: process.env.ACCESS_TOKEN_SECRET_KEY});
-      const {id, roles} = decoded
-      const foundUser =  this.usersService.findOne(id); // Use decoded.sub if sub contains user ID
+      const decoded = await this.jwtService.verify(refreshToken, { secret: process.env.REFRESH_TOKEN_SECRET_KEY});
+      // const {id, roles} = decoded
+      const foundUser = await this.usersService.findOne(decoded.id); // Use decoded.sub if sub contains user ID
 
       if (!foundUser) {
         throw new UnauthorizedException('Unauthorized');
       }
-      const token =  this.jwtService.sign({ id, roles }, { secret: process.env.ACCESS_TOKEN_SECRET_KEY, expiresIn: '30s' });
+      const token = this.jwtService.sign({ username: decoded.username, sub: decoded.sub }, { secret: process.env.SECRET_KEY, expiresIn: '30s' });
+      console.log('toooooooo',token)
       
-
       return { token };
 
     } catch (error) {

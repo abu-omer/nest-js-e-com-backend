@@ -1,9 +1,10 @@
-import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, NotFoundException, Res } from '@nestjs/common';
 import { UsersService } from 'src/users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { SignUpDto } from './dto/signUp.dto';
+import { Request, Response } from 'express';
 
 
 @Injectable()
@@ -36,7 +37,7 @@ export class AuthService {
         
     }
 
-    async login(loginDto: LoginDto) {
+    async login(loginDto: LoginDto,  res: Response) {
         try {
             const user = await this.usersService.findUserByUsername(loginDto.username)
             if (!user) {
@@ -44,11 +45,25 @@ export class AuthService {
             }
             const matchPassword = await bcrypt.compare(loginDto.password, user.password)
             if (!matchPassword) throw new NotFoundException('incorrect credintials')
-            const payload = { sub: user._id, username: user.username }
-            const accessToken = await this.jwtService.signAsync(payload)
-            const refreshToken = await this.jwtService.signAsync({ sub: user._id }, { expiresIn: '1d' })
-            await user.updateOne({refreshToken:refreshToken})
-            return {accessToken, roles: user.roles}
+            const payload = { id:user._id, username: user.username }
+            const accessToken = await this.jwtService.signAsync(payload, { secret: process.env.SECRET_KEY, expiresIn: '30s' })
+            const refreshToken = await this.jwtService.signAsync({id:user._id} ,{ secret: process.env.REFRESH_TOKEN_SECRET_KEY, expiresIn: '1d' })
+            await user.updateOne({ refreshToken: refreshToken })
+            res.cookie('accessToken', accessToken, {
+      httpOnly: true, // Important: prevents client-side JavaScript access
+      secure: process.env.NODE_ENV === 'production', // Set to true in production
+      sameSite: 'strict', // CSRF protection
+      maxAge: 3600000, // 1 hour in milliseconds
+    });
+
+    // Set the refresh token in the cookie
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+    });
+            return {accessToken,refreshToken, roles: user.roles}
             
         } catch (error) {
             throw new InternalServerErrorException('Failed to log in');

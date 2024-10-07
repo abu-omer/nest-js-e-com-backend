@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PatientsModule } from './patients/patients.module';
@@ -12,8 +12,9 @@ import { CategoriesModule } from './categories/categories.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
-import { AuthGuard } from './common/core/auth-guard/auth.guard';
+import { AuthGuard } from './common/guards/auth.guard';
 import { ConfigModule } from '@nestjs/config';
+import { CurrentUserMiddleware } from './common/middlewares/currentuser/currentuser.middleware';
 // config()
 
 
@@ -26,5 +27,11 @@ import { ConfigModule } from '@nestjs/config';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(CurrentUserMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}
 
